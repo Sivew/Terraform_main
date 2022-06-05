@@ -22,9 +22,10 @@ terraform {
   }
  }
  #Create a Public Subnets
- resource "aws_subnet" "publicsubnets" {   
+ resource "aws_subnet" "publicsubnets" {  
+   count = "${length(var.public_subnets)}"
    vpc_id =  aws_vpc.Main.id
-   cidr_block  = "${var.public_subnets}"     # Define CIDR block for public subnets
+   cidr_block  = "${element(var.public_subnets, count.index)}"    # Define CIDR block for public subnets
    tags = {
     Name = "Terraform"
   }
@@ -32,8 +33,9 @@ terraform {
 
  #Create a Private Subnets             
  resource "aws_subnet" "privatesubnets" {
+   count = "${length(var.private_subnets)}"
    vpc_id =  aws_vpc.Main.id
-   cidr_block  = "${var.private_subnets}"     # Define CIDR block for private subnets
+   cidr_block  = "${element(var.private_subnets, count.index)}"     # Define CIDR block for private subnets
    tags = {
     Name = "Terraform"
   }
@@ -47,7 +49,7 @@ terraform {
  #Creating the NAT Gateway using subnet_id and allocation_id
  resource "aws_nat_gateway" "NATgw" {
    allocation_id = aws_eip.nateIP.id
-   subnet_id = aws_subnet.privatesubnets.id
+   subnet_id = "${element(aws_subnet.publicsubnets.*.id, 0)}"
    tags = {
     Name = "TerraformNAT"
   }
@@ -77,11 +79,13 @@ terraform {
  }
  
   resource "aws_route_table_association" "PublicRTassociation" {
-  subnet_id = aws_subnet.publicsubnets.id
+  count = "${length(aws_subnet.publicsubnets)}"
+  subnet_id = "${element(aws_subnet.publicsubnets.*.id, count.index)}"
   route_table_id = aws_route_table.PublicRT.id
 }
 
  resource "aws_route_table_association" "PrivateRTassociation" {
-  subnet_id = aws_subnet.privatesubnets.id
+  count = "${length(aws_subnet.privatesubnets)}"
+  subnet_id = "${element(aws_subnet.privatesubnets.*.id, count.index)}"
   route_table_id = aws_route_table.PrivateRT.id
 }
